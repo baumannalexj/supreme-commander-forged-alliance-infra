@@ -1,0 +1,3 @@
+# one "owner/name [tab-title]" per line; copy to repos.local.txt (git-ignored)
+example-org/example-repo fwd-base
+example-org/example-repo-two fwd-two

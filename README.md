@@ -29,7 +29,7 @@ Components:
 | `eventstore/` | SQLite (WAL) `events(seq,id,source,type,time,subject,data_json,received_at)` + `cursors(consumer,last_seq)`, plus an `events.jsonl` mirror. CLI: `python -m eventstore`. |
 | `consumer/` | `python -m consumer wait` / `digest`: blocking wait and compact digest over the store. |
 | `mcp_server/` | MCP server `supcom-events` (official `mcp` SDK, pinned in `uv.lock`). Named `mcp_server` so it does not shadow the SDK package `mcp`. |
-| `forwarder/` | `start-forwarders.ps1` / `stop-forwarders.ps1`. |
+| `forwarder/` | `start-forwarders.ps1` / `stop-forwarders.ps1`; `run-receiver.ps1` / `run-forwarder.ps1` run in the terminal tabs. Repo list in git-ignored `repos.local.txt` (see `repos.example.txt`). |
 | `contracts/` | JSON Schemas (2020-12) + `CHANGELOG.md`. |
 | `tests/` | unittest + synthetic fixtures (no real payloads). |
 | `tools/` | `send_test_event.py` (post a signed fixture), `mcp_smoke.py` (stdio client example). |
@@ -48,7 +48,7 @@ uv run python -m unittest discover -s tests -t .          # run the tests
 # the forwarder needs the admin:repo_hook scope (and admin on each repo), once:
 gh auth refresh -h github.com -s admin:repo_hook
 
-# start receiver + one forwarder per repo (defaults to the four project repos)
+# start receiver + one forwarder per repo in a new "supcom-events" terminal window (repos from forwarder/repos.local.txt)
 .\forwarder\start-forwarders.ps1
 .\forwarder\start-forwarders.ps1 -Repos owner/a,owner/b -Port 47801      # override
 
@@ -89,6 +89,21 @@ Use your clone's path. Add `-e SUPCOM_EVENTS_DIR=<dir>` if you moved the store. 
 | `SUPCOM_EVENTS_DIR` | `%LOCALAPPDATA%\supcom-events` | store, JSONL mirror, `pids.json`, `logs/` (outside the repo) |
 | `SUPCOM_RECEIVER_PORT` | `47800` | receiver port (host is always 127.0.0.1) |
 | `SUPCOM_WEBHOOK_SECRET` | none | HMAC secret. If set, unsigned or wrongly signed posts get 401. `start-forwarders.ps1` generates a per-session one if unset. |
+
+## What you see in the supcom-events window
+
+`start-forwarders.ps1` opens one new Windows Terminal window named `supcom-events`, one tab per process:
+
+| Tab | What it is | Normal output |
+|---|---|---|
+| `receiver` | the local webhook receiver | a "listening" line, then one `POST /webhook ... 202` line per delivery (`401` means a wrong signature) |
+| `fwd-base`, `fwd-infra`, `fwd-research`, `fwd-re` | one `gh webhook forward` per repo (titles come from `forwarder/repos.local.txt`) | `starting gh webhook forward for <repo>`, then `Forwarding Webhook events from GitHub...` and mostly silence |
+
+The forwarders restart themselves: if a websocket drops you will see `forwarder exited; restarting in Ns` followed by a new
+`starting ...` line. That is normal and needs no action. You do not need to type anything in this window.
+Everything is also tee'd to `%LOCALAPPDATA%\supcom-events\logs`.
+
+Stop everything with `.\forwarder\stop-forwarders.ps1` (stops only the pids in `pids.d`), or close the window.
 
 ## Waking the lead
 

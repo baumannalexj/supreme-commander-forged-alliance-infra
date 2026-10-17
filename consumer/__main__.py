@@ -37,7 +37,7 @@ def format_event(e: dict[str, Any]) -> str:
     head = f"{e['seq']} {e['type']} {e['source']}" + (f"#{n}" if n is not None else "")
     head += f" {d.get('actor') or '-'}"
     t = e["type"]
-    if t.startswith("github.issues.label") and d.get("label"):
+    if t in ("github.issues.labeled", "github.issues.unlabeled") and d.get("label"):
         text = d["label"]
     elif t.startswith("github.issue_comment"):
         text = d.get("body") or d.get("title")
