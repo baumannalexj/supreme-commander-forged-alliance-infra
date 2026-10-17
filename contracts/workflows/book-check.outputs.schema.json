@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/baumannalexj/supreme-commander-forged-alliance-infra/main/contracts/workflows/book-check.outputs.schema.json",
+  "title": "book-check outputs",
+  "description": "Outputs of the reusable book-check workflow (workflow_call).",
+  "x-contract-version": "0.1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "status"
+  ],
+  "properties": {
+    "status": {
+      "enum": [
+        "pass",
+        "fail",
+        "skipped"
+      ]
+    }
+  }
+}

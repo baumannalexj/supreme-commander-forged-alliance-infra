@@ -1,0 +1,16 @@
+{
+  "action": "completed",
+  "workflow_run": {
+    "id": 424242,
+    "name": "tests",
+    "display_title": "Example run title",
+    "status": "completed",
+    "conclusion": "success",
+    "head_branch": "main",
+    "html_url": "https://github.com/example-org/example-repo/actions/runs/424242",
+    "created_at": "2026-01-02T06:00:00Z",
+    "updated_at": "2026-01-02T06:05:00Z"
+  },
+  "repository": {"full_name": "example-org/example-repo"},
+  "sender": {"login": "octo-user"}
+}

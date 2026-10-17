@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/baumannalexj/supreme-commander-forged-alliance-infra/main/contracts/mcp/event-view.schema.json",
+  "title": "Event view",
+  "description": "An event as returned by MCP tools: envelope plus the store sequence number, without specversion.",
+  "x-contract-version": "0.1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "seq",
+    "id",
+    "source",
+    "type",
+    "time",
+    "subject",
+    "data"
+  ],
+  "properties": {
+    "seq": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "id": {
+      "type": "string"
+    },
+    "source": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string"
+    },
+    "time": {
+      "type": "string"
+    },
+    "subject": {
+      "type": "string"
+    },
+    "data": {
+      "$ref": "../event.schema.json#/$defs/data"
+    }
+  }
+}

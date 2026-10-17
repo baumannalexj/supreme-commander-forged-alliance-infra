@@ -1,0 +1,41 @@
+# Reusable workflow STUB demonstrating the contract style: typed inputs, typed outputs, least privilege.
+# Contract: contracts/workflows/book-check.outputs.schema.json (version 0.1.0).
+# It only validates its inputs today; the real check will be added behind the same inputs/outputs.
+name: book-check
+
+on:
+  workflow_call:
+    inputs:
+      repo:
+        description: "Repository to check, owner/name"
+        type: string
+        required: true
+      path:
+        description: "Directory inside the repo that holds the book, relative, no '..'"
+        type: string
+        required: false
+        default: "book"
+    outputs:
+      status:
+        description: "pass | fail | skipped (see contracts/workflows/book-check.outputs.schema.json)"
+        value: ${{ jobs.check.outputs.status }}
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      status: ${{ steps.validate.outputs.status }}
+    steps:
+      - id: validate
+        env:
+          INPUT_REPO: ${{ inputs.repo }}
+          INPUT_PATH: ${{ inputs.path }}
+        run: |
+          status=pass
+          case "$INPUT_REPO" in */*) ;; *) status=fail ;; esac
+          case "$INPUT_PATH" in ""|/*|*..*) status=fail ;; esac
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          echo "book-check stub: repo=$INPUT_REPO path=$INPUT_PATH status=$status"

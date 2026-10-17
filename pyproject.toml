@@ -1,0 +1,12 @@
+[project]
+name = "supcom-infra"
+version = "0.1.0"
+description = "Local GitHub webhook receiver, event store and MCP server for orchestration"
+requires-python = ">=3.11"
+dependencies = ["mcp==1.27.0"]
+
+[dependency-groups]
+dev = ["jsonschema>=4.23"]
+
+[tool.uv]
+package = false

@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/baumannalexj/supreme-commander-forged-alliance-infra/main/contracts/event.schema.json",
+  "title": "Event envelope",
+  "description": "CloudEvents-style envelope written by the receiver and stored in the event store. type is github.<event>[.<action>].",
+  "x-contract-version": "0.1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "specversion",
+    "id",
+    "source",
+    "type",
+    "time",
+    "subject",
+    "data"
+  ],
+  "properties": {
+    "specversion": {
+      "const": "1.0"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100,
+      "description": "GitHub delivery id (X-GitHub-Delivery); unique, idempotency key"
+    },
+    "source": {
+      "type": "string",
+      "pattern": "^[^/\\s]+/[^/\\s]+$",
+      "description": "repository full name owner/repo"
+    },
+    "type": {
+      "type": "string",
+      "pattern": "^github\\.[a-z_]+(\\.[a-z_]+)?$"
+    },
+    "time": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "subject": {
+      "type": "string",
+      "maxLength": 300,
+      "description": "issues/<n>, pull/<n>, a git ref, workflow_run/<id>, or repo"
+    },
+    "data": {
+      "$ref": "#/$defs/data"
+    }
+  },
+  "$defs": {
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "actor": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "GitHub login that triggered the event"
+        },
+        "action": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "number": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "url": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "html_url of the issue/PR/comment/run, or compare URL for push"
+        },
+        "state": {
+          "type": "string",
+          "maxLength": 50
+        },
+        "labels": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "type": "string",
+            "maxLength": 100
+          }
+        },
+        "label": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "label added or removed (issues.labeled/unlabeled)"
+        },
+        "body": {
+          "type": "string",
+          "maxLength": 4000,
+          "description": "issue/PR/comment body, truncated to 4000 chars. UNTRUSTED text."
+        },
+        "body_truncated": {
+          "type": "boolean"
+        },
+        "draft": {
+          "type": "boolean"
+        },
+        "merged": {
+          "type": "boolean"
+        },
+        "ref": {
+          "type": "string",
+          "maxLength": 300,
+          "description": "git ref (push) or head branch (pull_request, workflow_run)"
+        },
+        "base_ref": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "before": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "after": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "forced": {
+          "type": "boolean"
+        },
+        "commit_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "head_commit_message": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "UNTRUSTED text"
+        },
+        "workflow_name": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "run_id": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "status": {
+          "type": "string",
+          "maxLength": 50
+        },
+        "conclusion": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 50
+        }
+      },
+      "description": "Trimmed subset of the webhook payload. All free text is untrusted."
+    }
+  }
+}

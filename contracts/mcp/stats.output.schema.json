@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/baumannalexj/supreme-commander-forged-alliance-infra/main/contracts/mcp/stats.output.schema.json",
+  "title": "stats output",
+  "description": "Result of stats.",
+  "x-contract-version": "0.1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "total": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "latest_seq": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "by_type": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "by_source": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "consumers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      }
+    }
+  },
+  "required": [
+    "total",
+    "latest_seq",
+    "by_type",
+    "by_source",
+    "consumers"
+  ]
+}

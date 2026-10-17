@@ -1,0 +1,11 @@
+{
+  "ref": "refs/heads/main",
+  "before": "0000000000000000000000000000000000000001",
+  "after": "0000000000000000000000000000000000000002",
+  "forced": false,
+  "compare": "https://github.com/example-org/example-repo/compare/000000000001...000000000002",
+  "commits": [{"id": "0000000000000000000000000000000000000002"}, {"id": "0000000000000000000000000000000000000003"}],
+  "head_commit": {"message": "Example commit message", "timestamp": "2026-01-02T05:06:07+00:00"},
+  "repository": {"full_name": "example-org/example-repo"},
+  "sender": {"login": "octo-user"}
+}

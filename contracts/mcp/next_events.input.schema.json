@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/baumannalexj/supreme-commander-forged-alliance-infra/main/contracts/mcp/next_events.input.schema.json",
+  "title": "next_events input",
+  "description": "Return events after the consumer cursor and advance it.",
+  "x-contract-version": "0.1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "consumer": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_.-]{0,63}$"
+    },
+    "limit": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 20
+    }
+  },
+  "required": [
+    "consumer"
+  ]
+}

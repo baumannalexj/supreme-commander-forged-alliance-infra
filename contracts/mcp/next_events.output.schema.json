@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/baumannalexj/supreme-commander-forged-alliance-infra/main/contracts/mcp/next_events.output.schema.json",
+  "title": "next_events output",
+  "description": "Result of next_events.",
+  "x-contract-version": "0.1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "consumer": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_.-]{0,63}$"
+    },
+    "cursor_before": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "cursor_after": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "events": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "$ref": "event-view.schema.json"
+      }
+    }
+  },
+  "required": [
+    "consumer",
+    "cursor_before",
+    "cursor_after",
+    "count",
+    "events"
+  ]
+}

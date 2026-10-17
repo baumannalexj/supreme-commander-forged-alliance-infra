@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/baumannalexj/supreme-commander-forged-alliance-infra/main/contracts/mcp/ack.output.schema.json",
+  "title": "ack output",
+  "description": "Result of ack.",
+  "x-contract-version": "0.1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "consumer": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_.-]{0,63}$"
+    },
+    "last_seq": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "required": [
+    "consumer",
+    "last_seq"
+  ]
+}
