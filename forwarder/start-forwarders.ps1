@@ -1,15 +1,17 @@
 <#
 .SYNOPSIS
-  Start the local webhook receiver and one `gh webhook forward` per repo, in background processes.
+  Start the local webhook receiver and one `gh webhook forward` per repo, each in its own tab of a NEW
+  Windows Terminal window named "supcom-events" (tabs: receiver, then one fwd-* tab per repo).
 
 .DESCRIPTION
-  - Receiver: <repo>\.venv python -m receiver, bound to 127.0.0.1:<Port>.
-  - Forwarders: `gh webhook forward --repo=<r> --events=... --url=http://127.0.0.1:<Port>/webhook --secret ...`
-    (official cli/gh-webhook extension; needs the admin:repo_hook scope and admin on each repo).
-  - Pids and start times go to <EventsDir>\pids.json; stop-forwarders.ps1 stops only those.
-  - If SUPCOM_WEBHOOK_SECRET is not set, a random per-session secret is generated and used for both
-    sides (it is visible to local processes in the forwarder command line; this is a localhost-only tool).
-  - If the admin:repo_hook scope is missing, only the receiver starts and the refresh command is printed.
+  - Repos come from -Repos, else forwarder\repos.local.txt (git-ignored; one `owner/name [tab-title]` per line,
+    see repos.example.txt). The script fails if that file is missing.
+  - Receiver tab: run-receiver.ps1 -> .venv python -m receiver on 127.0.0.1:<Port>.
+  - Forwarder tabs: run-forwarder.ps1 -> `gh webhook forward` in a restart loop (needs the admin:repo_hook scope
+    and admin on each repo). Output is shown live and tee'd to <EventsDir>\logs.
+  - Each tab registers its pid in <EventsDir>\pids.d; stop-forwarders.ps1 stops only those.
+  - If SUPCOM_WEBHOOK_SECRET is not set, a random per-session secret is generated and used for both sides
+    (visible to local processes in the command lines; this is a localhost-only tool).
 
 .EXAMPLE
   .\forwarder\start-forwarders.ps1
@@ -17,12 +19,7 @@
 #>
 [CmdletBinding()]
 param(
-  [string[]]$Repos = @(
-    'baumannalexj/supreme-commander-forged-alliance',
-    'baumannalexj/supreme-commander-forged-alliance-research',
-    'baumannalexj/supreme-commander-forged-alliance-reverse-engineer',
-    'baumannalexj/supreme-commander-forged-alliance-infra'
-  ),
+  [string[]]$Repos,
   [int]$Port = $(if ($env:SUPCOM_RECEIVER_PORT) { [int]$env:SUPCOM_RECEIVER_PORT } else { 47800 }),
   [string]$Events = 'issues,issue_comment,push,pull_request,workflow_run'
 )
@@ -32,17 +29,48 @@ $repoRoot = Split-Path -Parent $PSScriptRoot
 $eventsDir = if ($env:SUPCOM_EVENTS_DIR) { $env:SUPCOM_EVENTS_DIR } else { Join-Path $env:LOCALAPPDATA 'supcom-events' }
 New-Item -ItemType Directory -Force -Path $eventsDir, (Join-Path $eventsDir 'logs') | Out-Null
 $pidFile = Join-Path $eventsDir 'pids.json'
+$pidsD = Join-Path $eventsDir 'pids.d'
 
+function Default-Title($repo) { 'fwd-' + (($repo -split '/')[-1] -split '-')[-1] }
+
+# Repo list: -Repos, else forwarder\repos.local.txt ("owner/name [tab-title]" per line, # comments allowed).
+$entries = @()
+if ($Repos) {
+  foreach ($r in $Repos) { $entries += [pscustomobject]@{ repo = $r; title = Default-Title $r } }
+} else {
+  $repoFile = Join-Path $PSScriptRoot 'repos.local.txt'
+  if (-not (Test-Path $repoFile)) {
+    throw "Missing $repoFile. Copy forwarder\repos.example.txt to forwarder\repos.local.txt and list your repos (one 'owner/name [tab-title]' per line), or pass -Repos."
+  }
+  foreach ($line in Get-Content $repoFile) {
+    $t = $line.Trim()
+    if (-not $t -or $t.StartsWith('#')) { continue }
+    $parts = $t -split '\s+'
+    $title = if ($parts.Count -gt 1) { $parts[1] } else { Default-Title $parts[0] }
+    $entries += [pscustomobject]@{ repo = $parts[0]; title = $title }
+  }
+  if ($entries.Count -eq 0) { throw "$repoFile lists no repos." }
+}
+
+$live = @()
+if (Test-Path $pidsD) {
+  foreach ($f in Get-ChildItem $pidsD -Filter *.json) {
+    $e = Get-Content $f.FullName -Raw | ConvertFrom-Json
+    if (Get-Process -Id $e.pid -ErrorAction SilentlyContinue) { $live += $e }
+  }
+}
 if (Test-Path $pidFile) {
   $old = Get-Content $pidFile -Raw | ConvertFrom-Json
-  $alive = @($old.processes | Where-Object { Get-Process -Id $_.pid -ErrorAction SilentlyContinue })
-  if ($alive.Count -gt 0) { throw "Already running (pids.json lists live pids). Run stop-forwarders.ps1 first." }
+  $live += @($old.processes | Where-Object { Get-Process -Id $_.pid -ErrorAction SilentlyContinue })
 }
+if ($live.Count -gt 0) { throw "Already running (pids.json / pids.d list live pids). Run stop-forwarders.ps1 first." }
+Remove-Item -LiteralPath $pidFile -ErrorAction SilentlyContinue
+if (Test-Path $pidsD) { Remove-Item -LiteralPath $pidsD -Recurse -Force }
+New-Item -ItemType Directory -Force -Path $pidsD | Out-Null
 
 # Python environment (pinned by uv.lock)
 Push-Location $repoRoot
 try { uv sync --frozen | Out-Null } finally { Pop-Location }
-$py = Join-Path $repoRoot '.venv\Scripts\python.exe'
 
 $secret = $env:SUPCOM_WEBHOOK_SECRET
 if (-not $secret) {
@@ -51,50 +79,29 @@ if (-not $secret) {
   $secret = [Convert]::ToBase64String($bytes) -replace '[^A-Za-z0-9]', 'x'
 }
 
-$procs = @()
-function Add-Proc($name, $p) {
-  $script:procs += [pscustomobject]@{ name = $name; pid = $p.Id; started = $p.StartTime.ToUniversalTime().ToString('o') }
+$canForward = $true
+if ((gh extension list 2>&1 | Out-String) -notmatch 'gh-webhook|cli/gh-webhook') {
+  Write-Warning "gh webhook extension missing. Install: gh extension install cli/gh-webhook"; $canForward = $false
+}
+if ((gh auth status 2>&1 | Out-String) -notmatch 'admin:repo_hook') {
+  Write-Warning "gh token lacks admin:repo_hook. Run: gh auth refresh -h github.com -s admin:repo_hook"; $canForward = $false
 }
 
-# Receiver
-$prevSecret = $env:SUPCOM_WEBHOOK_SECRET; $prevPort = $env:SUPCOM_RECEIVER_PORT
-try {
-  $env:SUPCOM_WEBHOOK_SECRET = $secret; $env:SUPCOM_RECEIVER_PORT = "$Port"
-  $p = Start-Process -FilePath $py -ArgumentList '-m', 'receiver' -WorkingDirectory $repoRoot -WindowStyle Hidden -PassThru `
-        -RedirectStandardOutput (Join-Path $eventsDir 'logs\receiver.out.log') -RedirectStandardError (Join-Path $eventsDir 'logs\receiver.err.log')
-  Add-Proc 'receiver' $p
-} finally {
-  $env:SUPCOM_WEBHOOK_SECRET = $prevSecret; $env:SUPCOM_RECEIVER_PORT = $prevPort
+# One new Windows Terminal window "supcom-events", one tab per process.
+$pwsh = (Get-Command pwsh -CommandType Application | Select-Object -First 1).Source
+$tabs = @()
+$tabs += "new-tab --title receiver `"$pwsh`" -NoExit -NoProfile -File `"$PSScriptRoot\run-receiver.ps1`" -Port $Port -Secret $secret -EventsDir `"$eventsDir`""
+if ($canForward) {
+  foreach ($en in $entries) {
+    $tabs += "new-tab --title $($en.title) `"$pwsh`" -NoExit -NoProfile -File `"$PSScriptRoot\run-forwarder.ps1`" -Repo $($en.repo) -Name $($en.title) -Port $Port -Secret $secret -EventsDir `"$eventsDir`" -Events $Events"
+  }
 }
+Start-Process -FilePath wt.exe -ArgumentList ('-w supcom-events ' + ($tabs -join ' ; '))
 
 # Wait for /health
 $ok = $false
-for ($i = 0; $i -lt 40 -and -not $ok; $i++) {
-  try { $ok = (Invoke-RestMethod "http://127.0.0.1:$Port/health" -TimeoutSec 2).status -eq 'ok' } catch { Start-Sleep -Milliseconds 250 }
+for ($i = 0; $i -lt 60 -and -not $ok; $i++) {
+  try { $ok = (Invoke-RestMethod "http://127.0.0.1:$Port/health" -TimeoutSec 2).status -eq 'ok' } catch { Start-Sleep -Milliseconds 500 }
 }
-if (-not $ok) { $procs | ConvertTo-Json | Set-Content (Join-Path $eventsDir 'pids.json'); throw "Receiver did not become healthy on port $Port; see $eventsDir\logs\receiver.err.log" }
-
-# Forwarders (need cli/gh-webhook + admin:repo_hook)
-$canForward = $true
-$ext = (gh extension list 2>&1 | Out-String)
-if ($ext -notmatch 'gh-webhook|cli/gh-webhook') {
-  Write-Warning "gh webhook extension missing. Install: gh extension install cli/gh-webhook"; $canForward = $false
-}
-$auth = (gh auth status 2>&1 | Out-String)
-if ($auth -notmatch 'admin:repo_hook') {
-  Write-Warning "gh token lacks admin:repo_hook. Run: gh auth refresh -h github.com -s admin:repo_hook"; $canForward = $false
-}
-if ($canForward) {
-  foreach ($r in $Repos) {
-    $safe = $r -replace '[^A-Za-z0-9_.-]', '_'
-    $fargs = @('webhook', 'forward', "--repo=$r", "--events=$Events", "--url=http://127.0.0.1:$Port/webhook", "--secret=$secret")
-    $p = Start-Process -FilePath (Get-Command gh -CommandType Application | Select-Object -First 1).Source -ArgumentList $fargs `
-          -WindowStyle Hidden -PassThru `
-          -RedirectStandardOutput (Join-Path $eventsDir "logs\forward-$safe.out.log") -RedirectStandardError (Join-Path $eventsDir "logs\forward-$safe.err.log")
-    Add-Proc "forward:$r" $p
-  }
-}
-
-[pscustomobject]@{ port = $Port; processes = $procs } | ConvertTo-Json -Depth 4 | Set-Content $pidFile -Encoding utf8
-$procs | Format-Table name, pid, started -AutoSize
-Write-Host "Receiver: http://127.0.0.1:$Port/health   Pids: $pidFile   Logs: $eventsDir\logs"
+if (-not $ok) { throw "Receiver did not become healthy on port $Port; see the receiver tab and $eventsDir\logs\receiver.out.log" }
+Write-Host "Started window 'supcom-events' ($($tabs.Count) tabs). Health: http://127.0.0.1:$Port/health   Pids: $pidsD   Logs: $eventsDir\logs"
