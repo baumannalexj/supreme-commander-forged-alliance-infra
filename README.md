@@ -177,3 +177,19 @@ jobs:
 - No write tools in MCP yet; no consumers that trigger workers from events yet.
 - Event types beyond issues, issue_comment, push, pull_request, workflow_run are stored with a minimal
   generic `data` (actor, action).
+
+## Merge queue (`mergequeue/`, CLI `mq`)
+
+Simulated GitHub merge queue for the private base repo (native queues need a paid plan). It reuses the receiver and
+event store above (consumer cursor `mq`); no second receiver.
+
+- Queue a PR into `performance-optimizations`: add the `queue` label (created if missing), or comment `/queue` (owner only), or `.\mq.ps1 enqueue <pr>`.
+- Flow, one PR at a time (FIFO in `data/mq/mq.sqlite`, git-ignored): build `mq/<pr>` = base + merge commit of the PR head in a private bare clone
+  (`data/mq/clone.git`), push it, dispatch `merge-queue-build.yml` (falls back to the push-triggered run until the workflow is on the
+  default branch), wait for the `workflow_run` completed event. Success: fast-forward the base (`git push origin mq/<pr>-sha:performance-optimizations`,
+  never forced; if the base or the PR head moved, rebuild and re-run), comment "merged by queue", delete `mq/<pr>`. Failure or merge
+  conflict: comment, drop the label, delete `mq/<pr>`, next PR.
+- Safety: pushes only to `performance-optimizations` and `mq/<n>` (`config.assert_pushable`), no force, never merges without the label or an owner `/queue` comment (re-checked right before the fast-forward).
+- Commands: `mq status | enqueue <pr> | remove <pr> | run [--once] | poll` (`.\mq.ps1 ...` or `uv run python -m mergequeue ...`).
+  `run` is the dispatcher loop (needs the receiver + forwarder for the base repo running); `poll` reconciles from the GitHub API for missed webhooks (`run` also does it every 120 s).
+- Env: `MQ_DATA_DIR` (default `data/mq`), `MQ_REPO` (default the base repo).

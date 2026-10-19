@@ -8,3 +8,5 @@ events.jsonl
 pids.json
 .env
 forwarder/repos.local.txt
+data/
+.worktrees/
