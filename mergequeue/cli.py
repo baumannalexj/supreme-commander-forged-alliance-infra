@@ -4,6 +4,7 @@ Run it as ``uv run python -m mergequeue <cmd>`` (or ``.\\mq.ps1 <cmd>``).
 """
 from __future__ import annotations
 
+import os
 import time
 
 import click
@@ -19,6 +20,22 @@ from .state import Queue
 def make_engine() -> Engine:
     d = config.data_dir()
     return Engine(Queue(d / "mq.sqlite"), Repo(d / "clone.git"))
+
+
+def _single_instance(path):
+    """Hold an OS file lock for the life of the process (released automatically if it dies)."""
+    fh = open(path, "a+")
+    try:
+        if os.name == "nt":
+            import msvcrt
+            msvcrt.locking(fh.fileno(), msvcrt.LK_NBLCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        fh.close()
+        return None
+    return fh
 
 
 @click.group()
@@ -74,6 +91,9 @@ def remove(pr: int) -> None:
 def run(interval: float, check_every: float, poll_every: float, once: bool) -> None:
     """Dispatcher loop. Consumes events from the infra repo's local event store (fed by its webhook receiver)."""
     eng = make_engine()
+    lock = _single_instance(config.data_dir() / "run.lock")
+    if lock is None:
+        raise click.ClickException("another `mq run` already holds data/mq/run.lock")
     store = EventStore()
     if config.CONSUMER not in store.stats()["consumers"]:
         store.set_cursor(config.CONSUMER, store.latest_seq())  # first start: ignore history

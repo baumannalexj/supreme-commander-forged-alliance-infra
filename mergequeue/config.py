@@ -13,6 +13,8 @@ WORKFLOW_FILE = "merge-queue-build.yml"
 WORKFLOW_NAME = "merge-queue-build"
 CONSUMER = "mq"                       # event-store cursor name
 MAX_ATTEMPTS = 5                      # rebuilds when the base keeps moving
+GIT_NAME = os.environ.get("MQ_GIT_NAME", f"{OWNER} (merge queue)")
+GIT_EMAIL = os.environ.get("MQ_GIT_EMAIL", f"{OWNER}@users.noreply.github.com")
 REMOTE_URL = f"https://github.com/{REPO}.git"
 
 # The ONLY refs the queue may push to or delete. Anything else (main, other branches, tags) is refused.

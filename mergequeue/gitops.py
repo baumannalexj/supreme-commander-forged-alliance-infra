@@ -4,6 +4,7 @@ Every push goes through ``_push`` -> ``config.assert_pushable``; there is no for
 """
 from __future__ import annotations
 
+import os
 import subprocess
 from pathlib import Path
 
@@ -60,7 +61,13 @@ class Repo:
             raise GitError(f"merge-tree: {(p.stderr or p.stdout).strip()}")
         tree = p.stdout.splitlines()[0].strip()
         msg = f"Merge pull request #{pr} (merge queue)"
-        return self.git("commit-tree", tree, "-p", base, "-p", head, "-m", msg).stdout.strip()
+        ident = {"GIT_AUTHOR_NAME": config.GIT_NAME, "GIT_AUTHOR_EMAIL": config.GIT_EMAIL,
+                 "GIT_COMMITTER_NAME": config.GIT_NAME, "GIT_COMMITTER_EMAIL": config.GIT_EMAIL}
+        p = subprocess.run(["git", "-C", str(self.path), "commit-tree", tree, "-p", base, "-p", head, "-m", msg],
+                           capture_output=True, text=True, encoding="utf-8", env={**os.environ, **ident})
+        if p.returncode != 0:
+            raise GitError(f"commit-tree: {p.stderr.strip()}")
+        return p.stdout.strip()
 
     def _push(self, src: str, dst: str) -> subprocess.CompletedProcess:
         config.assert_pushable(dst)

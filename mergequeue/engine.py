@@ -21,6 +21,7 @@ class Engine:
         self.q = queue
         self.repo = repo
         self.sleep = sleep
+        self.retry_after = 0.0
 
     # -- trigger rules --------------------------------------------------
     def trigger_of(self, p: dict[str, Any]) -> str | None:
@@ -178,11 +179,14 @@ class Engine:
         if check_runs:
             self.check_running()
         while self.q.running() is None and (e := self.q.head()) is not None:
+            if time.monotonic() < self.retry_after:
+                return
             try:
                 self.start(e)
             except (GitError, gh.GhError) as exc:
-                self.q.log(e["pr"], f"error starting: {exc}")
-                return  # retry on the next tick
+                self.q.log(e["pr"], f"error starting (retry in 60 s): {str(exc)[:300]}")
+                self.retry_after = time.monotonic() + 60
+                return
 
     def reconcile(self) -> None:
         """`mq poll`: rebuild the picture from the GitHub API (missed webhooks)."""
