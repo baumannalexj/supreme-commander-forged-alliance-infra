@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/baumannalexj/supreme-commander-forged-alliance-infra/main/contracts/mcp/list_events.input.schema.json",
+  "$id": "https://raw.githubusercontent.com/supcomfa-sandbox/supreme-commander-forged-alliance-infra/main/contracts/mcp/list_events.input.schema.json",
   "title": "list_events input",
   "description": "List events oldest first after since_seq.",
   "x-contract-version": "0.1.0",
