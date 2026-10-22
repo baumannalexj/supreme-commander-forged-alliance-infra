@@ -40,7 +40,7 @@ Components:
 Prerequisites: `uv`, `gh` (logged in). Install the forwarder extension once: `gh extension install cli/gh-webhook`.
 
 ```powershell
-git clone https://github.com/baumannalexj/supreme-commander-forged-alliance-infra
+git clone https://github.com/supcomfa-sandbox/supreme-commander-forged-alliance-infra
 cd supreme-commander-forged-alliance-infra
 uv sync --frozen
 uv run python -m unittest discover -s tests -t .          # run the tests
@@ -144,7 +144,7 @@ Tests validate receiver output, the JSONL mirror and every MCP result against th
 ```yaml
 jobs:
   book:
-    uses: baumannalexj/supreme-commander-forged-alliance-infra/.github/workflows/book-check.yml@main
+    uses: supcomfa-sandbox/supreme-commander-forged-alliance-infra/.github/workflows/book-check.yml@main
     with:
       repo: owner/name
       path: book

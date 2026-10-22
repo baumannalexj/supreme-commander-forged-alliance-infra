@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/baumannalexj/supreme-commander-forged-alliance-infra/main/contracts/mcp/get_event.input.schema.json",
+  "$id": "https://raw.githubusercontent.com/supcomfa-sandbox/supreme-commander-forged-alliance-infra/main/contracts/mcp/get_event.input.schema.json",
   "title": "get_event input",
   "description": "Get one event by id.",
   "x-contract-version": "0.1.0",
